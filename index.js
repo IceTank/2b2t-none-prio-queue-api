@@ -8,9 +8,14 @@ const express = require('express')
 dotenv.config()
 
 const reconnectInterval = process.env.INTERVAL ?? 60_000 * 4
+let didLogUsername = false
+let queueLength = -1
+let updatedAt = null
 
 const app = express()
 let lastKeepAlive = new Date()
+
+console.info('Reconnect interval:', reconnectInterval)
 
 app.get('/*', (req, res) => {
   res.json({
@@ -19,10 +24,9 @@ app.get('/*', (req, res) => {
   })
 })
 
-app.listen(process.env.WEBPORT)
-
-let queueLength = -1
-let updatedAt = null
+app.listen(process.env.WEBPORT, () => {
+  console.info('listening on port', process.env.WEBPORT)
+})
 
 async function connect() {
   const client = mp.createClient({
@@ -36,10 +40,15 @@ async function connect() {
   client.on('kick_disconnect', console.error)
   // client.on('packet', (data, meta) => console.info(meta.name))
   // client.on('custom_payload', console.info)
+  client.once('login', () => {
+    if (!didLogUsername) {
+      console.info('Bot logged in with username', client.username)
+      didLogUsername = true
+    }
+  })
   client.on('error', console.error)
   client.on('chat', (data, meta) => {
     try {
-      debugger
       const msg = new ChatMessage(JSON.parse(data?.message))?.toString()
       if (!msg) return
       if (msg.includes('Position in queue')) {
