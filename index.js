@@ -29,6 +29,7 @@ app.listen(process.env.WEBPORT, () => {
 })
 
 async function connect() {
+  lastKeepAlive = new Date()
   const client = mp.createClient({
     host: '2b2t.org',
     version: '1.12.2',
@@ -46,7 +47,9 @@ async function connect() {
       didLogUsername = true
     }
   })
-  client.on('error', console.error)
+  client.on('error', (error) => {
+    console.error('Client Error:', error)
+  })
   client.on('chat', (data, meta) => {
     try {
       const msg = new ChatMessage(JSON.parse(data?.message))?.toString()
@@ -79,6 +82,7 @@ setInterval(() => {
 async function init() {
   while (true) {
     await connect()
+      .catch(console.error)
     await setTimeout(reconnectInterval)
   }
 }
