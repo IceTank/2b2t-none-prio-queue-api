@@ -7,6 +7,8 @@ const { setTimeout } = require('timers/promises')
 const express = require('express')
 dotenv.config()
 
+const reconnectInterval = process.env.INTERVAL ?? 60_000 * 4
+
 const app = express()
 let lastKeepAlive = new Date()
 
@@ -59,7 +61,7 @@ async function connect() {
 }
 
 setInterval(() => {
-  if (new Date() - lastKeepAlive > 60000) {
+  if (new Date() - lastKeepAlive > reconnectInterval * 2) {
     console.error('Detected loop died', new Date())
     process.exit(1)
   }
@@ -68,7 +70,7 @@ setInterval(() => {
 async function init() {
   while (true) {
     await connect()
-    await setTimeout(30000)
+    await setTimeout(reconnectInterval)
   }
 }
 
