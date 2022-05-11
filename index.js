@@ -8,8 +8,9 @@ const express = require('express')
 dotenv.config()
 
 const app = express()
+let lastKeepAlive = new Date()
 
-app.get('/', (req, res) => {
+app.get('/*', (req, res) => {
   res.json({
     updatedAt: updatedAt ? updatedAt.getTime() : null,
     queueLength: queueLength
@@ -30,17 +31,20 @@ async function connect() {
     profilesFolder: path.resolve('./profiles')
   })
 
+  client.on('kick_disconnect', console.error)
+  // client.on('packet', (data, meta) => console.info(meta.name))
+  // client.on('custom_payload', console.info)
   client.on('error', console.error)
   client.on('chat', (data, meta) => {
     try {
-      console.info(data)
       debugger
       const msg = new ChatMessage(JSON.parse(data?.message))?.toString()
-      console.info(msg)
-      if (msg && msg.includes('Position in queue')) {
+      if (!msg) return
+      if (msg.includes('Position in queue')) {
         const match = msg.match(/Position in queue: (\d+)/)
         const pos = Number(match ? match[1] : NaN)
         if (isNaN(pos)) return
+        console.info('Position in queue:', pos)
         queueLength = pos
         updatedAt = new Date()
         client.end()
@@ -53,6 +57,13 @@ async function connect() {
   
   await once(client, 'end')
 }
+
+setInterval(() => {
+  if (new Date() - lastKeepAlive > 60000) {
+    console.error('Detected loop died', new Date())
+    process.exit(1)
+  }
+})
 
 async function init() {
   while (true) {
